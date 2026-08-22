@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant ADF as ADF
+    participant CTRL as control_ingesta
+    participant PG as PostgreSQL
+    participant ADLS as Bronze ADLS
+    participant LOG as log_ingesta_adf
+
+    ADF->>CTRL: Leer watermark_inicio
+    ADF->>PG: Obtener watermark_fin
+    ADF->>PG: SELECT filas con ts_actualizacion > inicio y <= fin
+
+    loop Hasta 3 intentos
+        ADF->>ADLS: Copiar Parquet + metadatos
+        alt Copia exitosa
+            ADLS-->>ADF: OK
+        else Fallo transitorio
+            ADF->>ADF: Esperar 30s / 60s
+        end
+    end
+
+    alt Copia exitosa
+        ADF->>LOG: Registrar filas, bytes, duracion y batch
+        ADF->>CTRL: Actualizar watermark = watermark_fin
+    else Copia falla tras reintentos
+        ADF->>LOG: Registrar fallo
+        Note over CTRL: El watermark NO avanza
+        ADF->>ADF: Notificar fallo y detener rama
+    end

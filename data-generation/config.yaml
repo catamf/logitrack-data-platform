@@ -1,0 +1,39 @@
+seed: 42
+fecha_inicio: "2025-08-01"
+fecha_fin: "2026-08-21"
+formatos: [csv, parquet]
+porcentaje_nulos: 0.05
+anomalias:
+  duplicados_envios: 0.0005
+  peso_negativo: 0.0005
+  fecha_entrega_invalida: 0.0005
+
+profiles:
+  dev:
+    OPE_CONDUCTORES: 120
+    CLI_REMITENTES: 60
+    GEO_ZONAS: 80
+    TMS_ENVIOS: 10000
+    GPS_RUTAS: 3000
+    CAL_DESTINATARIOS: 2500
+    DIR_NOVEDADES: 1500
+  prod:
+    OPE_CONDUCTORES: 500
+    CLI_REMITENTES: 200
+    GEO_ZONAS: 300
+    TMS_ENVIOS: 2000000
+    GPS_RUTAS: 100000
+    CAL_DESTINATARIOS: 300000
+    DIR_NOVEDADES: 150000
+
+ciudades:
+  - {id: BOG, nombre: Bogota}
+  - {id: MED, nombre: Medellin}
+  - {id: CAL, nombre: Cali}
+  - {id: BAQ, nombre: Barranquilla}
+  - {id: BGA, nombre: Bucaramanga}
+  - {id: PEI, nombre: Pereira}
+  - {id: MZL, nombre: Manizales}
+  - {id: CTG, nombre: Cartagena}
+  - {id: SMR, nombre: Santa Marta}
+  - {id: CUC, nombre: Cucuta}

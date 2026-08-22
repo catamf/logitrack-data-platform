@@ -1,0 +1,51 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl.bak
+
+# Secretos / configuración local
+.env.local
+infra/backend/backend-*.hcl
+infra/bootstrap/backend.hcl
+!infra/backend/*.hcl.example
+.env
+.env.*
+!.env.local.example
+*.pem
+*.key
+*.pfx
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Datos generados
+/data/
+/data-generation/output/
+/tmp/
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Evidencias locales pesadas
+/docs/evidencias/*.png
+/docs/evidencias/*.jpg
+/docs/evidencias/*.jpeg
+
+# Material de estudio
+/_private/

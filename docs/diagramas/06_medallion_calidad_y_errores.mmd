@@ -1,0 +1,21 @@
+flowchart LR
+    B["BRONZE<br/>dato crudo<br/>esquema fuente<br/>metadatos de ingesta"]
+
+    V{"SILVER<br/>validaciones"}
+    ERR[("silver.errores_pipeline")]
+    DQREP[("silver.reporte_calidad")]
+    S["SILVER DELTA<br/>tipado<br/>deduplicado<br/>FK validas<br/>PII protegida"]
+
+    G["GOLD DELTA<br/>dimensiones<br/>hechos<br/>agregaciones<br/>KPI"]
+    DQ{"5 controles<br/>Gold"}
+    DQOUT[("gold.resultados_calidad")]
+    SQLW["SQL Warehouse"]
+
+    B --> V
+    V -->|registro invalido| ERR
+    V -->|metricas de calidad| DQREP
+    V -->|registro conforme| S
+    S --> G
+    G --> DQ
+    DQ --> DQOUT
+    G --> SQLW

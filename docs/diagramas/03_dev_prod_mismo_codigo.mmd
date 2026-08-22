@@ -1,0 +1,19 @@
+flowchart TB
+    CODE["Mismo repositorio / mismo codigo"]
+
+    CODE --> DEVV["dev.tfvars"]
+    CODE --> PRODV["prod.tfvars"]
+
+    DEVV --> DEVS["State remoto DEV"]
+    PRODV --> PRODS["State remoto PROD"]
+
+    DEVS --> DEVR["Recursos -dev<br/>compute pequeno<br/>trigger OFF<br/>SQL Warehouse OFF"]
+    PRODS --> PRODR["Recursos -prod<br/>configuracion final<br/>trigger ON<br/>SQL Warehouse ON"]
+
+    CODE --> CFG["data-generation/config.yaml"]
+    CFG --> DDATA["profile dev<br/>volumen pequeno para iterar"]
+    CFG --> PDATA["profile prod<br/>volumen minimo exigido"]
+
+    FINAL["Ejecucion final economica:<br/>puedes usar profile prod sobre infraestructura DEV<br/>para probar el volumen completo sin mantener PROD desplegado"]
+    PDATA -.-> FINAL
+    DEVR -.-> FINAL

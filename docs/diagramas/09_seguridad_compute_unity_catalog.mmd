@@ -1,0 +1,36 @@
+flowchart TB
+    ADMIN[Admin]
+    DE["Data Engineer tecnico<br/>ADF Managed Identity"]
+    ANALYST[Analyst]
+
+    ETL[Databricks ETL compute]
+    SQLW[Databricks SQL Warehouse]
+
+    B[(Bronze)]
+    S[(Silver)]
+    G[(Gold)]
+
+    ADMIN --> ETL
+    ADMIN --> SQLW
+    DE -->|CAN_ATTACH_TO| ETL
+    ANALYST -->|CAN_USE| SQLW
+
+    ETL -->|R/W| B
+    ETL -->|R/W| S
+    ETL -->|R/W| G
+    SQLW -->|SELECT| G
+
+    UC[Unity Catalog]
+    UC -. grants .-> B
+    UC -. grants .-> S
+    UC -. grants .-> G
+
+    X1["Analyst: sin acceso"]
+    X2["Analyst: sin acceso"]
+    ANALYST -. X .-> X1
+    X1 -.-> B
+    ANALYST -. X .-> X2
+    X2 -.-> S
+
+    KV[Key Vault]
+    KV -. secretos .-> DE

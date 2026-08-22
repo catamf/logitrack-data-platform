@@ -1,0 +1,114 @@
+{
+  "name": "pl_logitrack_notificar",
+  "properties": {
+    "description": "Notificacion generica por webhook y propagacion opcional del fallo",
+    "activities": [
+      {
+        "name": "If_Enviar_Notificacion",
+        "type": "IfCondition",
+        "dependsOn": [],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(pipeline().parameters.notifications_enabled, 'true')",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "Obtener_Webhook",
+              "type": "WebActivity",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "00:01:00",
+                "retry": 3,
+                "retryIntervalInSeconds": 10,
+                "secureOutput": true,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "method": "GET",
+                "url": {
+                  "value": "@concat(pipeline().parameters.key_vault_uri, 'secrets/notification-webhook-url?api-version=7.5')",
+                  "type": "Expression"
+                },
+                "authentication": {
+                  "type": "MSI",
+                  "resource": "https://vault.azure.net"
+                }
+              }
+            },
+            {
+              "name": "Enviar_Mensaje",
+              "type": "WebActivity",
+              "dependsOn": [
+                {
+                  "activity": "Obtener_Webhook",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "00:01:00",
+                "retry": 3,
+                "retryIntervalInSeconds": 10,
+                "secureOutput": false,
+                "secureInput": true
+              },
+              "typeProperties": {
+                "method": "POST",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "url": {
+                  "value": "@activity('Obtener_Webhook').output.value",
+                  "type": "Expression"
+                },
+                "body": {
+                  "value": "@concat('{\"text\":\"', replace(pipeline().parameters.message, '\"', ''), '\"}')",
+                  "type": "Expression"
+                }
+              }
+            }
+          ],
+          "ifFalseActivities": []
+        }
+      },
+      {
+        "name": "If_Propagar_Fallo",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "If_Enviar_Notificacion",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(pipeline().parameters.fail_after, 'true')",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "Propagar_Fallo",
+              "type": "Fail",
+              "dependsOn": [],
+              "typeProperties": {
+                "message": {
+                  "value": "@pipeline().parameters.message",
+                  "type": "Expression"
+                },
+                "errorCode": {
+                  "value": "@pipeline().parameters.failure_code",
+                  "type": "Expression"
+                }
+              }
+            }
+          ],
+          "ifFalseActivities": []
+        }
+      }
+    ]
+  }
+}

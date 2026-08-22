@@ -1,0 +1,33 @@
+flowchart LR
+    subgraph LOCAL["Desarrollo local"]
+        REPO[Repositorio Git]
+        POETRY[Poetry]
+        VENV[".venv del proyecto"]
+        PY[Python local]
+        DOCKER[Docker Compose]
+        LPG[(PostgreSQL 16 local)]
+
+        REPO --> POETRY --> VENV --> PY
+        REPO --> DOCKER --> LPG
+        PY -->|genera y carga datos DEV| LPG
+    end
+
+    subgraph CLOUD["Azure - ejecucion final"]
+        APG[(Azure Database for PostgreSQL)]
+        ADF[Azure Data Factory]
+        ADLS[ADLS Gen2]
+        DBX[Azure Databricks]
+        SQLW[SQL Warehouse]
+
+        APG --> ADF --> ADLS
+        ADF --> DBX
+        DBX --> SQLW
+    end
+
+    PY -->|mismo generador y loader| APG
+
+    NOTE1["PostgreSQL local valida fuente y carga;<br/>ADF NO se conecta a localhost"]
+    NOTE1 -.-> LPG
+
+    NOTE2["PySpark no vive en Poetry:<br/>lo aporta Databricks Runtime"]
+    NOTE2 -.-> DBX

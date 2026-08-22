@@ -1,0 +1,44 @@
+flowchart TD
+    START([Trigger manual o 02:00])
+    FE["ForEach: 7 tablas"]
+    WM1[Leer watermark inicial]
+    WM2[Obtener watermark final]
+    C1[Copy intento 1]
+    W30[Wait 30 s]
+    C2[Copy intento 2]
+    W60[Wait 60 s]
+    C3[Copy intento 3]
+    LOG[Registrar log]
+    UPD[Actualizar watermark]
+
+    AUD[Auditar Bronze]
+    VOL{"Desviacion de volumen > 30%?"}
+    NVA[Notificar ANOMALIA DE VOLUMEN]
+    FAILV([Fail antes de Silver])
+
+    SIL[Notebook Silver]
+    GOLD[Notebook Gold]
+    DQ[5 controles Gold]
+    SUM[Resumen ejecucion]
+    OK[Notificar RESUMEN_DIARIO]
+    END([Fin exitoso])
+
+    NF[Notificar FALLO]
+    FAIL([Fin fallido])
+
+    START --> FE --> WM1 --> WM2 --> C1
+    C1 -->|fallo| W30 --> C2
+    C2 -->|fallo| W60 --> C3
+    C1 -->|exito| LOG
+    C2 -->|exito| LOG
+    C3 -->|exito| LOG
+    C3 -->|fallo| NF --> FAIL
+    LOG --> UPD
+    UPD -->|terminan las 7 tablas| AUD
+    AUD --> VOL
+    VOL -->|si| NVA --> FAILV
+    VOL -->|no| SIL --> GOLD --> DQ --> SUM --> OK --> END
+
+    SIL -. fallo .-> NF
+    GOLD -. fallo .-> NF
+    DQ -. fallo .-> NF

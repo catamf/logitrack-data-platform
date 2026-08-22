@@ -1,0 +1,26 @@
+flowchart LR
+    PG[Azure Database for PostgreSQL] --> ADF[ADF<br/>Ingesta y orquestación]
+    ADF --> B[(Bronze<br/>ADLS / Parquet)]
+    B --> S[(Silver<br/>Delta)]
+    S --> G[(Gold<br/>Delta)]
+    G --> SQLW[Databricks SQL Warehouse<br/>motor de consulta]
+    SQLW --> ANA[Analyst / Dashboard]
+
+    ETL[Databricks ETL compute] -. PySpark .-> S
+    ETL -. PySpark .-> G
+    ADF -. ejecuta notebooks .-> ETL
+
+    DE[Data Engineer técnico<br/>ADF Managed Identity] --> ETL
+    ADM[Admin<br/>usuario Terraform] --> ETL
+    ADM --> SQLW
+
+    UC[Unity Catalog] -. catálogo y permisos .-> B
+    UC -. catálogo y permisos .-> S
+    UC -. catálogo y permisos .-> G
+
+    KV[Key Vault] -. secretos .-> ADF
+    MON[Log Analytics + Monitor + Action Group] -. observabilidad .-> ADF
+    TF[Terraform] -. aprovisiona .-> PG
+    TF -. aprovisiona .-> ADF
+    TF -. aprovisiona .-> ETL
+    TF -. aprovisiona .-> SQLW

@@ -1,0 +1,4 @@
+resource_group_name  = "rg-logitrack-tfstate"
+storage_account_name = "CAMBIAR_CON_OUTPUT_BOOTSTRAP"
+container_name       = "tfstate"
+key                  = "logitrack/dev.tfstate"

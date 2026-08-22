@@ -1,0 +1,72 @@
+erDiagram
+    GEO_ZONAS ||--o{ OPE_CONDUCTORES : asigna
+    OPE_CONDUCTORES ||--o{ TMS_ENVIOS : realiza
+    CLI_REMITENTES ||--o{ TMS_ENVIOS : solicita
+    GEO_ZONAS ||--o{ TMS_ENVIOS : recibe
+    OPE_CONDUCTORES ||--o{ GPS_RUTAS : conduce
+    TMS_ENVIOS ||--o{ CAL_DESTINATARIOS : recibe
+    TMS_ENVIOS ||--o{ DIR_NOVEDADES : genera
+
+    OPE_CONDUCTORES {
+        string cond_id
+        string num_doc_hash
+        date fec_ingreso
+        string tip_vehiculo
+        string cod_zona_asignada
+        datetime ts_actualizacion
+    }
+
+    CLI_REMITENTES {
+        string id_remitente
+        string tipo_cliente
+        int sla_entrega_horas
+        decimal penalidad_porc
+        datetime ts_actualizacion
+    }
+
+    GEO_ZONAS {
+        string id_zona
+        string id_ciudad
+        decimal nivel_trafico_prom
+        decimal distancia_bodega_km
+        datetime ts_actualizacion
+    }
+
+    TMS_ENVIOS {
+        string id_envio
+        string id_remitente
+        string cond_id
+        string id_zona_destino
+        decimal peso_kg
+        date fec_recepcion
+        date fec_entrega_programada
+        date fec_entrega_real
+        string estado_final
+        datetime ts_actualizacion
+    }
+
+    GPS_RUTAS {
+        string id_ruta
+        string cond_id
+        date fec_ruta
+        decimal km_recorridos
+        int num_paradas_plan
+        int num_paradas_real
+        decimal desviacion_ruta_km
+        datetime ts_actualizacion
+    }
+
+    CAL_DESTINATARIOS {
+        string id_calificacion
+        string id_envio
+        int puntaje_1_5
+        datetime ts_actualizacion
+    }
+
+    DIR_NOVEDADES {
+        string id_novedad
+        string id_envio
+        string tip_novedad
+        boolean requiere_accion
+        datetime ts_actualizacion
+    }

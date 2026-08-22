@@ -1,0 +1,33 @@
+flowchart LR
+    PG[Azure Database for PostgreSQL<br/>fuente relacional]
+    ADF[Azure Data Factory<br/>ingesta + orquestacion]
+    B[(Bronze<br/>ADLS Gen2 / Parquet)]
+    S[(Silver<br/>Delta)]
+    G[(Gold<br/>Delta)]
+    SQLW[Databricks SQL Warehouse<br/>motor de consulta]
+    ANA[Analyst / Dashboard]
+
+    PG --> ADF --> B --> S --> G --> SQLW --> ANA
+
+    ETL[Databricks ETL compute]
+    ADF -. ejecuta notebooks .-> ETL
+    ETL -. transforma .-> S
+    ETL -. transforma .-> G
+
+    UC[Unity Catalog<br/>catalogo + permisos]
+    UC -. gobierna .-> B
+    UC -. gobierna .-> S
+    UC -. gobierna .-> G
+
+    KV[Key Vault<br/>secretos]
+    KV -. secretos .-> ADF
+
+    MON[Log Analytics + Monitor + Action Group]
+    MON -. observabilidad .-> ADF
+
+    TF[Terraform<br/>IaC]
+    TF -. aprovisiona .-> PG
+    TF -. aprovisiona .-> ADF
+    TF -. aprovisiona .-> B
+    TF -. aprovisiona .-> ETL
+    TF -. aprovisiona .-> SQLW

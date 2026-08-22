@@ -1,0 +1,54 @@
+flowchart LR
+    subgraph SILVER["Silver"]
+        SC[conductores]
+        SR[remitentes]
+        SZ[zonas]
+        SE[envios]
+        SG[gps_rutas]
+        SCA[cal_destinatarios]
+        SN[dir_novedades]
+    end
+
+    subgraph GOLD["Gold"]
+        DC[dim_conductores]
+        DR[dim_remitentes]
+        DZ[dim_zonas]
+        FE[fact_envios]
+        FR[fact_rutas]
+        FD[fact_desempeno_conductor]
+        FT[fact_trazabilidad_envio]
+        FA[fact_alertas_zona]
+
+        A1[agg_desempeno_zona]
+        A2[agg_sla_remitente]
+        A3[agg_tipo_paquete]
+        KPI[kpi_logistica_diaria]
+    end
+
+    SC --> DC
+    SR --> DR
+    SZ --> DZ
+    SE --> FE
+    SG --> FR
+
+    SE --> FD
+    SG --> FD
+    SCA --> FD
+
+    SE --> FT
+    SN --> FT
+
+    SE --> FA
+    SZ --> FA
+
+    FE --> A2
+    FE --> A3
+    FD --> A1
+    FE --> KPI
+    FA --> KPI
+
+    KPI --> SQLW[Databricks SQL Warehouse]
+    A1 --> SQLW
+    A2 --> SQLW
+    A3 --> SQLW
+    SQLW --> ANA[Analyst / Dashboard]

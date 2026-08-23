@@ -25,16 +25,35 @@ resource "databricks_cluster" "etl" {
   spark_version           = data.databricks_spark_version.lts.id
   node_type_id            = data.databricks_node_type.smallest.id
   autotermination_minutes = 15
-  data_security_mode      = "USER_ISOLATION"
+  is_pinned               = true
 
-  autoscale {
-    min_workers = var.databricks_min_workers
-    max_workers = var.databricks_max_workers
+  is_single_node = var.databricks_single_node ? true : null
+  kind           = var.databricks_single_node ? "CLASSIC_PREVIEW" : null
+
+  data_security_mode = var.databricks_single_node ? "DATA_SECURITY_MODE_STANDARD" : "USER_ISOLATION"
+
+  dynamic "autoscale" {
+    for_each = var.databricks_single_node ? [] : [1]
+
+    content {
+      min_workers = var.databricks_min_workers
+      max_workers = var.databricks_max_workers
+    }
   }
 
   custom_tags = {
     Environment = var.environment
     Project     = var.project
+  }
+
+  # Databricks agrega estas propiedades automáticamente
+  # cuando is_single_node = true.
+  lifecycle {
+    ignore_changes = [
+      spark_conf["spark.databricks.cluster.profile"],
+      spark_conf["spark.master"],
+      custom_tags["ResourceClass"]
+    ]
   }
 }
 
@@ -81,18 +100,25 @@ resource "databricks_storage_credential" "lake" {
 }
 
 resource "databricks_external_location" "layers" {
-  for_each = var.enable_unity_catalog ? toset(["bronze", "silver", "gold"]) : toset([])
-  name     = "ext_${local.catalog_name}_${each.value}"
-  url      = "abfss://${each.value}@${azurerm_storage_account.lake.name}.dfs.core.windows.net/"
+  for_each        = var.enable_unity_catalog ? toset(["bronze", "silver", "gold"]) : toset([])
+  name            = "ext_${local.catalog_name}_${each.value}"
+  url             = "abfss://${each.value}@${azurerm_storage_account.lake.name}.dfs.core.windows.net/"
   credential_name = databricks_storage_credential.lake[0].name
-  comment  = "Capa ${each.value} de LogiTrack"
-  depends_on = [azurerm_storage_data_lake_gen2_filesystem.layers]
+  comment         = "Capa ${each.value} de LogiTrack"
+  depends_on      = [azurerm_storage_data_lake_gen2_filesystem.layers]
 }
 
 resource "databricks_catalog" "logitrack" {
   count   = var.enable_unity_catalog ? 1 : 0
   name    = local.catalog_name
   comment = "Catalogo LogiTrack ${var.environment}"
+
+  # El metastore asignado al workspace no tiene una ubicacion administrada
+  # propia. El catalogo usa un subpath exclusivo dentro de la external
+  # location Gold. Los schemas mantienen ubicaciones separadas por capa.
+  storage_root = "abfss://gold@${azurerm_storage_account.lake.name}.dfs.core.windows.net/_unity_catalog/"
+
+  depends_on = [databricks_external_location.layers]
 }
 
 resource "databricks_schema" "layers" {

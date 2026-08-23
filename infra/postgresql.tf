@@ -7,8 +7,8 @@ resource "random_password" "postgres" {
 resource "azurerm_postgresql_flexible_server" "source" {
   name                          = "psql-${local.prefix}-${random_string.suffix.result}"
   resource_group_name           = azurerm_resource_group.this.name
-  location                      = azurerm_resource_group.this.location
-  version                       = "17"
+  location                      = var.postgres_location != "" ? var.postgres_location : azurerm_resource_group.this.location
+  version                       = "16"
   public_network_access_enabled = true
   administrator_login           = var.postgres_admin_login
   administrator_password        = random_password.postgres.result
@@ -17,6 +17,10 @@ resource "azurerm_postgresql_flexible_server" "source" {
   auto_grow_enabled             = true
   backup_retention_days         = 7
   tags                          = local.tags
+
+  lifecycle {
+    ignore_changes = [zone]
+  }
 }
 
 resource "azurerm_postgresql_flexible_server_database" "source" {

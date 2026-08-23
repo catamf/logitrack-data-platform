@@ -1,6 +1,8 @@
 # Databricks notebook source
 # MAGIC %run ./00_common
 
+# COMMAND ----------
+
 from pyspark.sql import Window, functions as F
 
 FORCE_VOLUME_ALERT = widget("force_volume_alert", "false").lower() == "true"

@@ -107,3 +107,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "postgres_location" {
+  description = "Region especifica para PostgreSQL. Vacio usa la region general del ambiente."
+  type        = string
+  default     = ""
+}
+
+variable "databricks_single_node" {
+  description = "Usa Databricks con un unico nodo para ambientes con cuota limitada."
+  type        = bool
+  default     = false
+}

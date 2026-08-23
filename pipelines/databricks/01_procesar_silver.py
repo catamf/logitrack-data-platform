@@ -1,6 +1,8 @@
 # Databricks notebook source
 # MAGIC %run ./00_common
 
+# COMMAND ----------
+
 from functools import reduce
 from pyspark.sql import DataFrame, functions as F
 

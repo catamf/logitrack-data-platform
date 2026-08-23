@@ -28,7 +28,7 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "PostgreSqlV2Source",
+                  "type": "AzurePostgreSqlSource",
                   "query": {
                     "value": "@concat('SELECT watermark_utc FROM control_ingesta WHERE tabla = ''', item(), '''')",
                     "type": "Expression"
@@ -36,7 +36,7 @@
                   "queryTimeout": "00:10:00"
                 },
                 "dataset": {
-                  "referenceName": "ds_postgresql_query",
+                  "referenceName": "ds_postgresql_query_v2",
                   "type": "DatasetReference"
                 },
                 "firstRowOnly": true
@@ -62,12 +62,12 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "PostgreSqlV2Source",
+                  "type": "AzurePostgreSqlSource",
                   "query": "SELECT CURRENT_TIMESTAMP AS watermark_fin",
                   "queryTimeout": "00:10:00"
                 },
                 "dataset": {
-                  "referenceName": "ds_postgresql_query",
+                  "referenceName": "ds_postgresql_query_v2",
                   "type": "DatasetReference"
                 },
                 "firstRowOnly": true
@@ -93,13 +93,12 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "PostgreSqlV2Source",
+                  "type": "AzurePostgreSqlSource",
                   "query": {
                     "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))",
                     "type": "Expression"
                   },
-                  "queryTimeout": "01:30:00",
-                  "partitionOption": "None"
+                  "queryTimeout": "01:30:00"
                 },
                 "sink": {
                   "type": "ParquetSink",
@@ -114,7 +113,7 @@
               },
               "inputs": [
                 {
-                  "referenceName": "ds_postgresql_query",
+                  "referenceName": "ds_postgresql_query_v2",
                   "type": "DatasetReference"
                 }
               ],
@@ -166,13 +165,12 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "PostgreSqlV2Source",
+                  "type": "AzurePostgreSqlSource",
                   "query": {
                     "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))",
                     "type": "Expression"
                   },
-                  "queryTimeout": "01:30:00",
-                  "partitionOption": "None"
+                  "queryTimeout": "01:30:00"
                 },
                 "sink": {
                   "type": "ParquetSink",
@@ -187,7 +185,7 @@
               },
               "inputs": [
                 {
-                  "referenceName": "ds_postgresql_query",
+                  "referenceName": "ds_postgresql_query_v2",
                   "type": "DatasetReference"
                 }
               ],
@@ -239,13 +237,12 @@
               },
               "typeProperties": {
                 "source": {
-                  "type": "PostgreSqlV2Source",
+                  "type": "AzurePostgreSqlSource",
                   "query": {
                     "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))",
                     "type": "Expression"
                   },
-                  "queryTimeout": "01:30:00",
-                  "partitionOption": "None"
+                  "queryTimeout": "01:30:00"
                 },
                 "sink": {
                   "type": "ParquetSink",
@@ -260,7 +257,7 @@
               },
               "inputs": [
                 {
-                  "referenceName": "ds_postgresql_query",
+                  "referenceName": "ds_postgresql_query_v2",
                   "type": "DatasetReference"
                 }
               ],
@@ -296,7 +293,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -331,7 +328,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -366,7 +363,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -401,7 +398,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -436,7 +433,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -471,7 +468,7 @@
                 "secureInput": false
               },
               "linkedServiceName": {
-                "referenceName": "ls_postgresql",
+                "referenceName": "ls_postgresql_v2",
                 "type": "LinkedServiceReference"
               },
               "typeProperties": {
@@ -510,7 +507,7 @@
         },
         "typeProperties": {
           "source": {
-            "type": "PostgreSqlV2Source",
+            "type": "AzurePostgreSqlSource",
             "query": {
               "value": "@concat('SELECT * FROM log_ingesta_adf WHERE batch_id = ''', pipeline().RunId, '''')",
               "type": "Expression"
@@ -530,7 +527,7 @@
         },
         "inputs": [
           {
-            "referenceName": "ds_postgresql_query",
+            "referenceName": "ds_postgresql_query_v2",
             "type": "DatasetReference"
           }
         ],

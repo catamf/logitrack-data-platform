@@ -42,7 +42,8 @@ resource "azurerm_data_factory_linked_service_data_lake_storage_gen2" "lake" {
   depends_on           = [azurerm_role_assignment.adf_storage]
 }
 
-# PostgreSqlV2 permite mantener la contraseña en Key Vault en lugar de incrustarla en Terraform/ADF.
+# PostgreSqlV2 permite mantener la contraseña en Key Vault en lugar de
+# incrustarla en Terraform/ADF.
 resource "azurerm_data_factory_linked_custom_service" "postgres" {
   name            = "ls_postgresql"
   data_factory_id = azurerm_data_factory.this.id
@@ -66,18 +67,79 @@ resource "azurerm_data_factory_linked_custom_service" "postgres" {
   })
 }
 
+# PostgreSQL V2 se administra mediante AzAPI porque el recurso custom de
+# AzureRM no materializa authenticationType en ARM para este conector.
+resource "azapi_resource" "postgres_v2" {
+  type      = "Microsoft.DataFactory/factories/linkedservices@2018-06-01"
+  parent_id = azurerm_data_factory.this.id
+  name      = "ls_postgresql_v2"
+
+  body = {
+    properties = {
+      type    = "AzurePostgreSql"
+      version = "2.0"
+
+      typeProperties = {
+        server             = azurerm_postgresql_flexible_server.source.fqdn
+        port               = 5432
+        database           = azurerm_postgresql_flexible_server_database.source.name
+        username           = var.postgres_admin_login
+        authenticationType = "Basic"
+        sslMode            = 5
+
+        password = {
+          type = "AzureKeyVaultSecret"
+
+          store = {
+            referenceName = azurerm_data_factory_linked_service_key_vault.this.name
+            type          = "LinkedServiceReference"
+          }
+
+          secretName = azurerm_key_vault_secret.postgres_password.name
+        }
+      }
+    }
+  }
+
+  schema_validation_enabled = false
+
+  depends_on = [
+    azurerm_data_factory_linked_service_key_vault.this
+  ]
+}
+
+# Dataset heredado. Se mantiene temporalmente durante la migración para evitar
+# eliminarlo mientras el pipeline de ADF todavía lo referencia en Azure.
 resource "azurerm_data_factory_custom_dataset" "postgres_query" {
   name            = "ds_postgresql_query"
   data_factory_id = azurerm_data_factory.this.id
   type            = "PostgreSqlV2Table"
 
   linked_service {
-    name = azurerm_data_factory_linked_custom_service.postgres.name
+    name = azapi_resource.postgres_v2.name
   }
 
-  # La consulta del pipeline sobrescribe la tabla; este valor hace válido el dataset genérico.
   type_properties_json = jsonencode({
-    tableName = "control_ingesta"
+    table = "control_ingesta"
+  })
+}
+
+# Dataset compatible con Azure Database for PostgreSQL connector 2.0.
+# El pipeline se migrará primero a este recurso antes de eliminar el dataset
+# heredado.
+resource "azurerm_data_factory_custom_dataset" "postgres_query_v2" {
+  name            = "ds_postgresql_query_v2"
+  data_factory_id = azurerm_data_factory.this.id
+  type            = "AzurePostgreSqlTable"
+
+  linked_service {
+    name = azapi_resource.postgres_v2.name
+  }
+
+  # Las actividades usan consultas SQL, por lo que la tabla funciona como
+  # valor genérico del dataset.
+  type_properties_json = jsonencode({
+    table = "control_ingesta"
   })
 }
 
@@ -105,6 +167,7 @@ resource "azurerm_data_factory_linked_service_azure_databricks" "this" {
   adb_domain          = "https://${azurerm_databricks_workspace.this.workspace_url}"
   msi_workspace_id    = azurerm_databricks_workspace.this.id
   existing_cluster_id = databricks_cluster.etl.id
+
   depends_on = [
     azurerm_role_assignment.adf_databricks,
     databricks_service_principal.adf_mi
@@ -118,13 +181,17 @@ resource "azurerm_data_factory_pipeline" "notify" {
 
   parameters = {
     notifications_enabled = "false"
-    key_vault_uri          = ""
-    message                = ""
-    fail_after             = "false"
-    failure_code           = "LOGITRACK_NOTIFICATION"
+    key_vault_uri         = ""
+    message               = ""
+    fail_after            = "false"
+    failure_code          = "LOGITRACK_NOTIFICATION"
   }
 
-  activities_json = jsonencode(jsondecode(file("${path.module}/../orchestration/adf/pipeline_notificar.json"))["properties"]["activities"])
+  activities_json = jsonencode(
+    jsondecode(
+      file("${path.module}/../orchestration/adf/pipeline_notificar.json")
+    )["properties"]["activities"]
+  )
 
   depends_on = [
     azurerm_data_factory_linked_service_key_vault.this
@@ -137,20 +204,27 @@ resource "azurerm_data_factory_pipeline" "main" {
   description     = "Ingesta incremental y orquestacion Bronze-Silver-Gold"
 
   parameters = {
-    environment          = var.environment
-    storage_account_name = azurerm_storage_account.lake.name
-    catalog_name         = local.catalog_name
-    use_unity_catalog    = tostring(var.enable_unity_catalog)
-    carga_completa       = "false"
-    force_volume_alert   = "false"
-    key_vault_uri        = azurerm_key_vault.this.vault_uri
+    environment           = var.environment
+    storage_account_name  = azurerm_storage_account.lake.name
+    catalog_name          = local.catalog_name
+    use_unity_catalog     = tostring(var.enable_unity_catalog)
+    carga_completa        = "false"
+    force_volume_alert    = "false"
+    key_vault_uri         = azurerm_key_vault.this.vault_uri
     notifications_enabled = tostring(var.enable_notifications)
   }
 
-  activities_json = jsonencode(jsondecode(file("${path.module}/../orchestration/adf/pipeline_principal.json"))["properties"]["activities"])
+  activities_json = jsonencode(
+    jsondecode(
+      file("${path.module}/../orchestration/adf/pipeline_principal.json")
+    )["properties"]["activities"]
+  )
 
+  # Durante esta etapa el pipeline pasa a depender del dataset nuevo.
+  # El dataset heredado se eliminará únicamente después de comprobar que
+  # Azure ya no tiene ninguna referencia hacia él.
   depends_on = [
-    azurerm_data_factory_custom_dataset.postgres_query,
+    azurerm_data_factory_custom_dataset.postgres_query_v2,
     azurerm_data_factory_dataset_parquet.bronze,
     azurerm_data_factory_linked_service_azure_databricks.this,
     databricks_notebook.pipeline,
@@ -174,18 +248,19 @@ resource "azurerm_data_factory_trigger_schedule" "daily" {
   }
 
   pipeline_parameters = {
-    environment          = var.environment
-    storage_account_name = azurerm_storage_account.lake.name
-    catalog_name         = local.catalog_name
-    use_unity_catalog    = tostring(var.enable_unity_catalog)
-    carga_completa       = "false"
-    force_volume_alert   = "false"
-    key_vault_uri        = azurerm_key_vault.this.vault_uri
+    environment           = var.environment
+    storage_account_name  = azurerm_storage_account.lake.name
+    catalog_name          = local.catalog_name
+    use_unity_catalog     = tostring(var.enable_unity_catalog)
+    carga_completa        = "false"
+    force_volume_alert    = "false"
+    key_vault_uri         = azurerm_key_vault.this.vault_uri
     notifications_enabled = tostring(var.enable_notifications)
   }
 }
 
-# Registra la Managed Identity de ADF dentro del workspace para que pueda adjuntarse al cluster.
+# Registra la Managed Identity de ADF dentro del workspace para que pueda
+# adjuntarse al cluster.
 data "azuread_service_principal" "adf_mi" {
   object_id  = azurerm_data_factory.this.identity[0].principal_id
   depends_on = [azurerm_data_factory.this]
@@ -193,13 +268,14 @@ data "azuread_service_principal" "adf_mi" {
 
 resource "databricks_service_principal" "adf_mi" {
   application_id   = data.azuread_service_principal.adf_mi.client_id
-  display_name     = "mi-adf-${local.prefix}"
   active           = true
   workspace_access = true
 }
 
-# Segmentación de compute: el pipeline usa el cluster ETL; Analyst no recibe permisos sobre él.
-# Los administradores del workspace conservan CAN_MANAGE de forma implícita en Databricks.
+# Segmentación de compute: el pipeline usa el cluster ETL; Analyst no recibe
+# permisos sobre él.
+# Los administradores del workspace conservan CAN_MANAGE de forma implícita
+# en Databricks.
 resource "databricks_permissions" "etl_cluster" {
   cluster_id = databricks_cluster.etl.id
 

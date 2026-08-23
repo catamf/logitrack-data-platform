@@ -1,6 +1,8 @@
 # Databricks notebook source
 # MAGIC %run ./00_common
 
+# COMMAND ----------
+
 from datetime import datetime, timezone
 from pyspark.sql import functions as F
 
@@ -24,11 +26,16 @@ def main() -> str:
             path = silver_path(table) if layer == "silver" else gold_path(table)
             summary_rows.append((layer, table, read_delta(path).count()))
 
-    rejected = (
-        read_delta(silver_path("errores_pipeline"))
+    # Los registros rechazados se obtienen del reporte por tabla.
+    # errores_pipeline cuenta hallazgos de calidad y puede contener
+    # varias filas asociadas a una misma clave duplicada.
+    total_rechazados = (
+        read_delta(silver_path("reporte_calidad"))
         .filter(F.col("batch_id") == BATCH_ID)
-        .count()
+        .agg(F.sum("registros_rechazados").alias("total"))
+        .first()["total"]
     )
+    rejected = int(total_rechazados or 0)
     quality = read_delta(gold_path("resultados_calidad")).filter(
         F.col("batch_id") == BATCH_ID
     )

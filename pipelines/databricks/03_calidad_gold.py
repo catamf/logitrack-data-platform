@@ -1,6 +1,8 @@
 # Databricks notebook source
 # MAGIC %run ./00_common
 
+# COMMAND ----------
+
 from pyspark.sql import functions as F
 
 

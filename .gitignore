@@ -49,3 +49,6 @@ Thumbs.db
 
 # Material de estudio
 /_private/
+
+# Terraform local overrides
+/infra/environments/*.local.tfvars

@@ -1,6 +1,8 @@
 # Databricks notebook source
 # MAGIC %run ./00_common
 
+# COMMAND ----------
+
 from pyspark.sql import functions as F, Window
 
 
@@ -47,9 +49,33 @@ def main():
 
     # --- Fact de envíos ---
     # Supuesto documentado: fec_entrega_programada no trae hora; se interpreta como fin del día (23:59:59).
-    recepcion_ts = F.to_timestamp(F.concat_ws(" ", F.col("e.fec_recepcion"), F.col("e.hra_recepcion")))
-    int1_ts = F.to_timestamp(F.concat_ws(" ", F.col("e.fec_intento1"), F.col("e.hra_intento1")))
-    int2_ts = F.to_timestamp(F.concat_ws(" ", F.col("e.fec_intento2"), F.col("e.hra_intento2")))
+    def combinar_fecha_hora(col_fecha: str, col_hora: str):
+        """Combina fecha y hora aunque la hora llegue con una fecha auxiliar."""
+        hora_texto = F.regexp_extract(
+            F.col(col_hora).cast("string"),
+            r"(\d{2}:\d{2}:\d{2})",
+            1,
+        )
+        fecha_texto = F.date_format(
+            F.col(col_fecha).cast("date"),
+            "yyyy-MM-dd",
+        )
+
+        return F.when(
+            F.col(col_fecha).isNull()
+            | F.col(col_hora).isNull()
+            | (hora_texto == ""),
+            F.lit(None).cast("timestamp"),
+        ).otherwise(
+            F.to_timestamp(
+                F.concat_ws(" ", fecha_texto, hora_texto),
+                "yyyy-MM-dd HH:mm:ss",
+            )
+        )
+
+    recepcion_ts = combinar_fecha_hora("e.fec_recepcion", "e.hra_recepcion")
+    int1_ts = combinar_fecha_hora("e.fec_intento1", "e.hra_intento1")
+    int2_ts = combinar_fecha_hora("e.fec_intento2", "e.hra_intento2")
     entrega_ts = F.when(F.col("e.resultado_intento2") == "Entregado", int2_ts) \
                   .when(F.col("e.resultado_intento1") == "Entregado", int1_ts) \
                   .otherwise(F.to_timestamp(F.col("e.fec_entrega_real")))
@@ -91,8 +117,8 @@ def main():
     write_delta(fact_envios, gold_path("fact_envios"), "gold", "fact_envios", ["anio_recepcion", "mes_recepcion"])
 
     # --- Fact rutas ---
-    start_ts = F.to_timestamp(F.concat_ws(" ", F.col("fec_ruta"), F.col("hra_inicio")))
-    end_ts = F.to_timestamp(F.concat_ws(" ", F.col("fec_ruta"), F.col("hra_fin")))
+    start_ts = combinar_fecha_hora("fec_ruta", "hra_inicio")
+    end_ts = combinar_fecha_hora("fec_ruta", "hra_fin")
     fact_rutas = (rutas
         .withColumn("horas_trabajadas", F.greatest((end_ts.cast("long") - start_ts.cast("long")) / 3600.0, F.lit(0.1)))
         .withColumn("eficiencia_ruta", F.when(F.col("num_paradas_plan") > 0, F.col("num_paradas_real") / F.col("num_paradas_plan")))
@@ -138,9 +164,9 @@ def main():
     write_delta(perf, gold_path("fact_desempeno_conductor"), "gold", "fact_desempeno_conductor", ["anio", "mes"])
 
     # --- Trazabilidad completa por envío ---
-    reception_events = env.select("id_envio", F.to_timestamp(F.concat_ws(" ", "fec_recepcion", "hra_recepcion")).alias("evento_ts"), F.lit("Recepcion").alias("evento"))
-    int1_events = env.filter(F.col("fec_intento1").isNotNull()).select("id_envio", F.to_timestamp(F.concat_ws(" ", "fec_intento1", "hra_intento1")).alias("evento_ts"), F.lit("Intento 1").alias("evento"))
-    int2_events = env.filter(F.col("fec_intento2").isNotNull()).select("id_envio", F.to_timestamp(F.concat_ws(" ", "fec_intento2", "hra_intento2")).alias("evento_ts"), F.lit("Intento 2").alias("evento"))
+    reception_events = env.select("id_envio", combinar_fecha_hora("fec_recepcion", "hra_recepcion").alias("evento_ts"), F.lit("Recepcion").alias("evento"))
+    int1_events = env.filter(F.col("fec_intento1").isNotNull()).select("id_envio", combinar_fecha_hora("fec_intento1", "hra_intento1").alias("evento_ts"), F.lit("Intento 1").alias("evento"))
+    int2_events = env.filter(F.col("fec_intento2").isNotNull()).select("id_envio", combinar_fecha_hora("fec_intento2", "hra_intento2").alias("evento_ts"), F.lit("Intento 2").alias("evento"))
     delivery_events = fact_envios.filter(F.col("entrega_real_ts").isNotNull()).select("id_envio", F.col("entrega_real_ts").alias("evento_ts"), F.lit("Entrega").alias("evento"))
     nov_events = (nov.join(env.select("id_envio", "fec_recepcion"), "id_envio", "inner")
         .filter(F.to_date("fec_novedad") >= F.to_date("fec_recepcion"))

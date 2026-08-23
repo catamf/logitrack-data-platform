@@ -245,7 +245,7 @@ Edita `infra/environments/dev.tfvars` antes del primer apply:
 
 - `alert_email`: correo real para Action Group.
 - `developer_public_ip`: IP pública del equipo si cargarás PostgreSQL desde tu computador.
-- `analyst_user_name`: puede quedar vacío durante construcción; complétalo para la evidencia de acceso Analyst.
+- El rol Analyst se representa mediante un service principal técnico de Databricks, creado por Terraform cuando se habilita el SQL Warehouse.
 - `enable_sql_warehouse`: en `dev` queda `false` por defecto; actívalo solo para la evidencia de consumo.
 - `enable_daily_trigger`: en `dev` queda `false` para evitar ejecuciones automáticas mientras desarrollas; actívalo para demostrar la programación diaria.
 - Para evidenciar el resumen diario y la alerta diferenciada de volumen en un canal, guarda primero el webhook en Key Vault con `poetry run python scripts/configurar_webhook.py --vault-url <key_vault_uri>` y después cambia `enable_notifications=true`.
@@ -402,7 +402,7 @@ La idempotencia se obtiene combinando watermark en Bronze, deduplicación en Sil
 - Los datos potencialmente sensibles se protegen desde Silver.
 - Unity Catalog aplica los grants de Data Engineer, Analyst y Admin.
 - Analyst no recibe grants sobre Bronze/Silver y recibe `SELECT` sobre Gold.
-- `analyst_user_name` debe apuntar a una cuenta real antes de tomar la captura de acceso denegado.
+- La evidencia final de permisos usa el service principal técnico de Analyst para demostrar acceso a Gold y ausencia de permisos sobre Bronze y Silver.
 
 Ver `governance/README.md` y `governance/permisos.sql`.
 

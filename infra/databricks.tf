@@ -68,25 +68,55 @@ locals {
   }
 }
 
+# Directorio restringido para los notebooks de ingenieria/ETL.
+# Se evita /Shared porque esa carpeta concede permisos amplios al grupo users.
+resource "databricks_directory" "etl_notebooks" {
+  path = "/Engineering/logitrack/${var.environment}"
+}
+
+# ADF puede ejecutar los notebooks del pipeline, pero no se concede acceso
+# al rol Analyst. Los administradores conservan CAN_MANAGE por defecto.
+resource "databricks_permissions" "etl_notebooks" {
+  directory_id = databricks_directory.etl_notebooks.object_id
+
+  access_control {
+    service_principal_name = databricks_service_principal.adf_mi.application_id
+    permission_level       = "CAN_RUN"
+  }
+}
+
 resource "databricks_notebook" "pipeline" {
   for_each = local.notebook_sources
   source   = "${path.module}/../pipelines/databricks/${each.value}"
-  path     = "/Shared/logitrack/${var.environment}/${each.key}"
+  path     = "${databricks_directory.etl_notebooks.path}/${each.key}"
+
+  depends_on = [
+    databricks_permissions.etl_notebooks
+  ]
 }
 
-# Principal opcional para demostrar el rol Analista con una sesión real.
-# Los usuarios agregados al workspace pueden recibir privilegios de Unity Catalog;
-# a diferencia de los grupos workspace-local, que no son válidos para GRANT en Unity Catalog.
-resource "databricks_user" "analyst" {
-  count                 = var.analyst_user_name == "" ? 0 : 1
-  user_name             = var.analyst_user_name
-  display_name          = "Analista LogiTrack ${var.environment}"
-  workspace_access      = true
+# Principal técnico que representa el rol Analyst de consumo.
+# Se crea únicamente cuando se habilita el SQL Warehouse.
+#
+# El Analyst:
+# - puede acceder al workspace y a Databricks SQL;
+# - recibe USE_CATALOG sobre el catálogo LogiTrack;
+# - recibe USE_SCHEMA + SELECT únicamente sobre Gold;
+# - recibe CAN_USE sobre el SQL Warehouse;
+# - no recibe permisos sobre Bronze;
+# - no recibe permisos sobre Silver;
+# - no recibe permisos sobre el cluster ETL.
+resource "databricks_service_principal" "analyst" {
+  count                 = var.enable_sql_warehouse ? 1 : 0
+  display_name          = "analyst-${local.prefix}"
+  active                = true
+  workspace_access      = false
   databricks_sql_access = true
+  allow_cluster_create  = false
 }
 
-# Unity Catalog es condicional porque un laboratorio/suscripción puede requerir primero
-# que un metastore esté asignado al workspace.
+# Unity Catalog es condicional porque un laboratorio/suscripción puede requerir
+# primero que un metastore esté asignado al workspace.
 resource "databricks_storage_credential" "lake" {
   count = var.enable_unity_catalog ? 1 : 0
   name  = "cred_${local.catalog_name}"
@@ -113,9 +143,9 @@ resource "databricks_catalog" "logitrack" {
   name    = local.catalog_name
   comment = "Catalogo LogiTrack ${var.environment}"
 
-  # El metastore asignado al workspace no tiene una ubicacion administrada
-  # propia. El catalogo usa un subpath exclusivo dentro de la external
-  # location Gold. Los schemas mantienen ubicaciones separadas por capa.
+  # El metastore asignado al workspace no tiene una ubicación administrada
+  # propia. El catálogo usa un subpath exclusivo dentro de Gold.
+  # Los schemas mantienen ubicaciones separadas por capa.
   storage_root = "abfss://gold@${azurerm_storage_account.lake.name}.dfs.core.windows.net/_unity_catalog/"
 
   depends_on = [databricks_external_location.layers]
@@ -131,9 +161,19 @@ resource "databricks_schema" "layers" {
 }
 
 # Tres roles lógicos:
-# - Data Engineer técnico: Managed Identity de ADF, lectura/escritura en todas las capas.
-# - Analyst: usuario opcional, solo SELECT en Gold.
-# - Admin: usuario que ejecuta Terraform, control completo sobre los objetos de datos.
+#
+# Data Engineer técnico / ADF:
+# - lectura y escritura sobre Bronze, Silver y Gold;
+# - ejecuta el pipeline sobre el cluster ETL.
+#
+# Analyst:
+# - acceso de consulta únicamente a Gold;
+# - consumo mediante SQL Warehouse;
+# - sin acceso a Bronze, Silver ni al cluster ETL.
+#
+# Admin:
+# - usuario que ejecuta Terraform;
+# - control completo sobre los objetos gobernados.
 resource "databricks_grants" "catalog" {
   count   = var.enable_unity_catalog ? 1 : 0
   catalog = databricks_catalog.logitrack[0].name
@@ -144,9 +184,10 @@ resource "databricks_grants" "catalog" {
   }
 
   dynamic "grant" {
-    for_each = var.analyst_user_name == "" ? [] : [1]
+    for_each = var.enable_sql_warehouse ? [1] : []
+
     content {
-      principal  = databricks_user.analyst[0].user_name
+      principal  = databricks_service_principal.analyst[0].application_id
       privileges = ["USE_CATALOG"]
     }
   }
@@ -157,6 +198,8 @@ resource "databricks_grants" "catalog" {
   }
 }
 
+# Bronze es una capa técnica de ingeniería.
+# Analyst no recibe ningún grant sobre este schema.
 resource "databricks_grants" "bronze" {
   count  = var.enable_unity_catalog ? 1 : 0
   schema = "${databricks_catalog.logitrack[0].name}.bronze"
@@ -174,6 +217,8 @@ resource "databricks_grants" "bronze" {
   depends_on = [databricks_schema.layers]
 }
 
+# Silver es una capa técnica de transformación y calidad.
+# Analyst no recibe ningún grant sobre este schema.
 resource "databricks_grants" "silver" {
   count  = var.enable_unity_catalog ? 1 : 0
   schema = "${databricks_catalog.logitrack[0].name}.silver"
@@ -191,6 +236,7 @@ resource "databricks_grants" "silver" {
   depends_on = [databricks_schema.layers]
 }
 
+# Gold es la única capa expuesta al rol Analyst.
 resource "databricks_grants" "gold" {
   count  = var.enable_unity_catalog ? 1 : 0
   schema = "${databricks_catalog.logitrack[0].name}.gold"
@@ -201,9 +247,10 @@ resource "databricks_grants" "gold" {
   }
 
   dynamic "grant" {
-    for_each = var.analyst_user_name == "" ? [] : [1]
+    for_each = var.enable_sql_warehouse ? [1] : []
+
     content {
-      principal  = databricks_user.analyst[0].user_name
+      principal  = databricks_service_principal.analyst[0].application_id
       privileges = ["USE_SCHEMA", "SELECT"]
     }
   }
@@ -216,30 +263,36 @@ resource "databricks_grants" "gold" {
   depends_on = [databricks_schema.layers]
 }
 
+# Motor de consulta destinado al consumo analítico de Gold.
+# Se mantiene pequeño y con auto-stop para limitar el costo del ambiente DEV.
 resource "databricks_sql_endpoint" "gold" {
-  count            = var.enable_sql_warehouse ? 1 : 0
-  name             = "sql-${local.prefix}"
-  cluster_size     = "X-Small"
-  max_num_clusters = 1
-  auto_stop_mins   = 10
+  count                     = var.enable_sql_warehouse ? 1 : 0
+  name                      = "sql-${local.prefix}"
+  cluster_size              = "X-Small"
+  max_num_clusters          = 1
+  auto_stop_mins            = 10
+  enable_serverless_compute = true
+  warehouse_type            = "PRO"
 }
 
-# Segmentación de consumo: Analyst usa el SQL Warehouse, pero no el cluster ETL.
-# ADF no necesita este compute porque su función es orquestar el pipeline, no consumir Gold.
+# Segmentación de compute:
+# - ADF / Data Engineer usa el cluster ETL.
+# - Analyst usa exclusivamente el SQL Warehouse.
 resource "databricks_permissions" "sql_warehouse" {
   count           = var.enable_sql_warehouse ? 1 : 0
   sql_endpoint_id = databricks_sql_endpoint.gold[0].id
 
-  dynamic "access_control" {
-    for_each = var.analyst_user_name == "" ? [] : [1]
-    content {
-      user_name        = databricks_user.analyst[0].user_name
-      permission_level = "CAN_USE"
-    }
+  access_control {
+    service_principal_name = databricks_service_principal.analyst[0].application_id
+    permission_level       = "CAN_USE"
   }
 }
 
-# El motor de Databricks necesita acceso a los paths externos para registrar y escribir tablas Delta.
+# El motor de Databricks necesita acceso a los paths externos para registrar
+# y escribir las tablas Delta.
+#
+# Analyst no recibe permisos directos sobre las External Locations porque
+# consume las tablas gobernadas de Gold mediante Unity Catalog y SQL Warehouse.
 resource "databricks_grants" "external_locations" {
   for_each          = var.enable_unity_catalog ? databricks_external_location.layers : {}
   external_location = each.value.id

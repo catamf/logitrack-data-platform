@@ -6,7 +6,7 @@ SHOW GRANTS ON SCHEMA logitrack_<env>.bronze;
 SHOW GRANTS ON SCHEMA logitrack_<env>.silver;
 SHOW GRANTS ON SCHEMA logitrack_<env>.gold;
 
--- Iniciar sesión con la cuenta configurada como analyst_user_name.
+-- Ejecutar estas pruebas usando la identidad técnica configurada para el rol Analyst.
 -- Debe funcionar:
 SELECT *
 FROM logitrack_<env>.gold.kpi_logistica_diaria

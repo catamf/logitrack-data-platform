@@ -7,7 +7,6 @@ alert_email            = "CAMBIAR_POR_TU_CORREO"
 developer_public_ip    = ""
 databricks_min_workers = 1
 databricks_max_workers = 2
-analyst_user_name      = "" # Completar con un usuario real para la evidencia de permisos.
 
 enable_unity_catalog = true
 enable_sql_warehouse = true

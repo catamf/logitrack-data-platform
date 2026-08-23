@@ -84,11 +84,6 @@ variable "databricks_max_workers" {
 }
 
 
-variable "analyst_user_name" {
-  description = "Usuario real de Azure Databricks para demostrar el rol Analista. Vacío omite su alta hasta la evidencia final."
-  type        = string
-  default     = ""
-}
 
 variable "enable_unity_catalog" {
   description = "Crea objetos Unity Catalog si el workspace tiene metastore disponible."

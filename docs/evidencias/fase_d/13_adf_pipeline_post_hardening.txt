@@ -1,0 +1,20 @@
+﻿FASE D - Validacion ADF despues del endurecimiento de notebooks
+Fecha de captura UTC: 2026-08-23T20:38:22.8755308Z
+Run ID: d636a27f-9f2f-11f1-8ad2-f4c52f12ecd6
+
+=== ESTADO DEL PIPELINE ===
+{
+  "estado": "Succeeded",
+  "fin": "2026-08-23T20:33:24.082845+00:00",
+  "inicio": "2026-08-23T20:18:44.860356+00:00",
+  "mensaje": ""
+}
+
+=== ACTIVIDADES DATABRICKS ===
+Actividad          Estado     Inicio                            Fin
+-----------------  ---------  --------------------------------  --------------------------------
+Auditar_Bronze     Succeeded  2026-08-23T20:22:19.823095+00:00  2026-08-23T20:29:11.293964+00:00
+Procesar_Silver    Succeeded  2026-08-23T20:29:15.474249+00:00  2026-08-23T20:30:44.419089+00:00
+Procesar_Gold      Succeeded  2026-08-23T20:30:47.000163+00:00  2026-08-23T20:31:55.519431+00:00
+Calidad_Gold       Succeeded  2026-08-23T20:31:58.035483+00:00  2026-08-23T20:32:27.318189+00:00
+Resumen_Ejecucion  Succeeded  2026-08-23T20:32:30.276191+00:00  2026-08-23T20:33:13.218208+00:00

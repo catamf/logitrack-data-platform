@@ -15,15 +15,13 @@ developer_public_ip = ""
 databricks_min_workers = 1
 databricks_max_workers = 2
 
-# Se completa únicamente durante la evidencia final de permisos.
-analyst_user_name = ""
 
 # La primera creación del workspace se realiza sin objetos de
 # Unity Catalog. Se habilita después de comprobar/asignar metastore.
 enable_unity_catalog = true
 
 # Se habilita únicamente durante la evidencia de consumo Gold.
-enable_sql_warehouse = false
+enable_sql_warehouse = true
 
 # El trigger existe pero no se activa durante el desarrollo inicial.
 enable_daily_trigger = false
@@ -32,5 +30,5 @@ enable_daily_trigger = false
 # el secreto correspondiente en Key Vault.
 enable_notifications = false
 
-postgres_location       = "centralus"
-databricks_single_node  = true
+postgres_location      = "centralus"
+databricks_single_node = true

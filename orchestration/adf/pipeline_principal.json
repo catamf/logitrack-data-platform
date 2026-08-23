@@ -564,7 +564,7 @@
           "type": "LinkedServiceReference"
         },
         "typeProperties": {
-          "notebookPath": "/Shared/logitrack/@{pipeline().parameters.environment}/00_auditar_bronze",
+          "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/00_auditar_bronze",
           "baseParameters": {
             "environment": {
               "value": "@pipeline().parameters.environment",
@@ -665,7 +665,7 @@
           "type": "LinkedServiceReference"
         },
         "typeProperties": {
-          "notebookPath": "/Shared/logitrack/@{pipeline().parameters.environment}/01_procesar_silver",
+          "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/01_procesar_silver",
           "baseParameters": {
             "environment": {
               "value": "@pipeline().parameters.environment",
@@ -713,7 +713,7 @@
           "type": "LinkedServiceReference"
         },
         "typeProperties": {
-          "notebookPath": "/Shared/logitrack/@{pipeline().parameters.environment}/02_procesar_gold",
+          "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/02_procesar_gold",
           "baseParameters": {
             "environment": {
               "value": "@pipeline().parameters.environment",
@@ -761,7 +761,7 @@
           "type": "LinkedServiceReference"
         },
         "typeProperties": {
-          "notebookPath": "/Shared/logitrack/@{pipeline().parameters.environment}/03_calidad_gold",
+          "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/03_calidad_gold",
           "baseParameters": {
             "environment": {
               "value": "@pipeline().parameters.environment",
@@ -809,7 +809,7 @@
           "type": "LinkedServiceReference"
         },
         "typeProperties": {
-          "notebookPath": "/Shared/logitrack/@{pipeline().parameters.environment}/04_resumen_ejecucion",
+          "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/04_resumen_ejecucion",
           "baseParameters": {
             "environment": {
               "value": "@pipeline().parameters.environment",

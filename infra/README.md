@@ -40,7 +40,7 @@ Edita al menos:
 
 - `alert_email` con tu correo real;
 - `developer_public_ip` si vas a cargar PostgreSQL desde tu computador;
-- `analyst_user_name` cuando vayas a producir la evidencia de permisos.
+- El service principal técnico de Analyst se crea automáticamente al habilitar `enable_sql_warehouse`.
 - `enable_notifications`: mantenlo en `false` hasta guardar el webhook con `poetry run python scripts/configurar_webhook.py --vault-url <key_vault_uri>`; después cámbialo a `true`.
 - `enable_daily_trigger`: en `dev` se deja `false` para evitar ejecuciones automáticas mientras desarrollas; actívalo para la evidencia final.
 - `enable_sql_warehouse`: en `dev` se deja `false` y se activa solo cuando vayas a demostrar el consumo de Gold.

@@ -45,7 +45,23 @@ if legacy_found:
     print("ERROR: configuracion Python duplicada encontrada:", *legacy_found, sep="\n- ")
     sys.exit(7)
 
+DIRECTORIOS_GENERADOS = {
+    ".git",
+    ".terraform",
+    ".venv",
+    "__pycache__",
+}
+
+
+def esta_en_directorio_generado(path: Path) -> bool:
+    """Indica si una ruta pertenece a un directorio generado localmente."""
+    ruta_relativa = path.relative_to(ROOT)
+    return any(parte in DIRECTORIOS_GENERADOS for parte in ruta_relativa.parts)
+
+
 for forbidden in ROOT.rglob("*"):
+    if esta_en_directorio_generado(forbidden):
+        continue
     if forbidden.is_file() and (
         "tfstate" in forbidden.name or forbidden.suffix == ".tfplan"
     ):
@@ -58,7 +74,7 @@ patterns = [
     ),
 ]
 for path in ROOT.rglob("*"):
-    if not path.is_file() or ".git" in path.parts:
+    if not path.is_file() or esta_en_directorio_generado(path):
         continue
     try:
         text = path.read_text(encoding="utf-8")

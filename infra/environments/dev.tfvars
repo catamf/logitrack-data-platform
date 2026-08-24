@@ -24,11 +24,11 @@ enable_unity_catalog = true
 enable_sql_warehouse = true
 
 # El trigger existe pero no se activa durante el desarrollo inicial.
-enable_daily_trigger = false
+enable_daily_trigger = true
 
 # Las notificaciones por webhook se habilitan después de configurar
 # el secreto correspondiente en Key Vault.
-enable_notifications = false
+enable_notifications = true
 
 postgres_location      = "centralus"
 databricks_single_node = true

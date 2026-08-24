@@ -246,9 +246,9 @@ Edita `infra/environments/dev.tfvars` antes del primer apply:
 - `alert_email`: correo real para Action Group.
 - `developer_public_ip`: IP pública del equipo si cargarás PostgreSQL desde tu computador.
 - El rol Analyst se representa mediante un service principal técnico de Databricks, creado por Terraform cuando se habilita el SQL Warehouse.
-- `enable_sql_warehouse`: en `dev` queda `false` por defecto; actívalo solo para la evidencia de consumo.
-- `enable_daily_trigger`: en `dev` queda `false` para evitar ejecuciones automáticas mientras desarrollas; actívalo para demostrar la programación diaria.
-- Para evidenciar el resumen diario y la alerta diferenciada de volumen en un canal, guarda primero el webhook en Key Vault con `poetry run python scripts/configurar_webhook.py --vault-url <key_vault_uri>` y después cambia `enable_notifications=true`.
+- `enable_sql_warehouse`: en la configuracion DEV de entrega queda `true` para demostrar el consumo gobernado de Gold mediante SQL Warehouse.
+- `enable_daily_trigger`: en la configuracion DEV de entrega queda `true`; el trigger diario ejecuta a las 07:00 UTC, equivalentes a las 02:00 de Bogota.
+- `enable_notifications`: en la configuracion DEV de entrega queda `true`. El webhook utilizado para las evidencias se almacena directamente en Key Vault y no se versiona en Git ni en Terraform.
 
 ### 7.3 Crear infraestructura DEV
 
@@ -408,12 +408,12 @@ Ver `governance/README.md` y `governance/permisos.sql`.
 
 ## 13. Monitoreo y alertas
 
-- ADF envía diagnósticos a Log Analytics.
-- Azure Monitor + Action Group funcionan como alerta secundaria de fallo del pipeline.
+- ADF tiene diagnósticos configurados hacia Log Analytics.
+- Azure Monitor + Action Group están desplegados y configurados como mecanismo secundario de alerta de fallo del pipeline.
 - `pl_logitrack_notificar` centraliza los mensajes por webhook para evitar repetir lógica: fallos de tarea, anomalía de volumen y resumen diario.
-- `00_auditar_bronze.py` compara volumen contra hasta siete ejecuciones previas. Si la desviación supera 30%, persiste `silver.alertas_volumen`, devuelve `VOLUME_ALERT`, ADF envía una notificación diferenciada al webhook configurado y detiene el flujo antes de Silver.
-- `04_resumen_ejecucion.py` guarda conteos por capa y por tabla, rechazados, alertas de calidad y duración total en `gold.resumen_ejecuciones`. Al finalizar con éxito, ADF envía ese resumen al webhook configurado.
-- El webhook es opcional durante desarrollo y necesario para obtener la evidencia de las notificaciones de resumen y anomalía de volumen. La URL se captura de forma oculta con `scripts/configurar_webhook.py` y queda almacenada directamente en Key Vault; no pasa por Git, `.tfvars`, variables de entorno ni Terraform state.
+- `00_auditar_bronze.py` compara volumen contra hasta siete ejecuciones previas. Si la desviación supera 30%, persiste `silver.alertas_volumen`, devuelve `VOLUME_ALERT` y el flujo de ADF contempla una notificación diferenciada al webhook configurado antes de detenerse previo a Silver.
+- `04_resumen_ejecucion.py` guarda conteos por capa y por tabla, rechazados, alertas de calidad y duración total en `gold.resumen_ejecuciones`. Al finalizar con éxito, ADF puede enviar ese resumen al webhook cuando este se encuentra configurado.
+- El webhook es opcional durante desarrollo y necesario para obtener evidencia específica de las notificaciones de resumen y anomalía de volumen. La URL se captura de forma oculta con `scripts/configurar_webhook.py` y queda almacenada directamente en Key Vault; no pasa por Git, `.tfvars`, variables de entorno ni Terraform state.
 
 ## 14. Reintentos y manejo de errores
 
@@ -443,3 +443,5 @@ Ver `docs/evidencias/README.md`. Las capturas deben provenir de la ejecución re
 ## 17. Decisiones deliberadas de alcance
 
 No se añadieron dbt, Great Expectations, OpenLineage ni Power BI. Las funcionalidades obligatorias se resuelven con PySpark, Delta, documentación Markdown, Terraform y servicios nativos de Azure/Databricks para mantener una solución pequeña y defendible.
+
+Limpieza posterior a la evaluación. Durante la migración del conector PostgreSQL se conservaron temporalmente los recursos ADF legacy ls_postgresql y ds_postgresql_query para evitar una migración destructiva. El pipeline activo utiliza ls_postgresql_v2 y ds_postgresql_query_v2; los recursos legacy no forman parte de la arquitectura objetivo y deben eliminarse una vez verificado que no existan referencias dependientes. Tras finalizar la evaluación técnica, el entorno DEV completo también puede desmontarse mediante Terraform para evitar costos innecesarios.

@@ -41,13 +41,13 @@ Edita al menos:
 - `alert_email` con tu correo real;
 - `developer_public_ip` si vas a cargar PostgreSQL desde tu computador;
 - El service principal técnico de Analyst se crea automáticamente al habilitar `enable_sql_warehouse`.
-- `enable_notifications`: mantenlo en `false` hasta guardar el webhook con `poetry run python scripts/configurar_webhook.py --vault-url <key_vault_uri>`; después cámbialo a `true`.
-- `enable_daily_trigger`: en `dev` se deja `false` para evitar ejecuciones automáticas mientras desarrollas; actívalo para la evidencia final.
-- `enable_sql_warehouse`: en `dev` se deja `false` y se activa solo cuando vayas a demostrar el consumo de Gold.
+- `enable_notifications`: en la configuracion DEV de entrega se mantiene `true` porque el webhook de evaluacion ya fue guardado de forma segura en Key Vault; la URL no se almacena en Terraform ni en Git.
+- `enable_daily_trigger`: en la configuracion DEV de entrega se mantiene `true` para demostrar la ejecucion automatica diaria requerida a las 02:00 hora de Bogota.
+- `enable_sql_warehouse`: en la configuracion DEV de entrega se mantiene `true` para demostrar el consumo gobernado de Gold mediante SQL Warehouse Serverless X-Small.
 
 ## Nota de costos
 
-`dev.tfvars` mantiene `enable_sql_warehouse=false` y `enable_daily_trigger=false` por defecto para controlar el crédito. `prod.tfvars` declara ambos activos. El cluster ETL usa un solo worker en dev y tiene auto-termination.
+`dev.tfvars` de entrega mantiene `enable_sql_warehouse=true`, `enable_daily_trigger=true` y `enable_notifications=true`. El cluster ETL usa un solo worker en DEV y tiene auto-termination. El entorno DEV puede destruirse con Terraform despues de la evaluacion para evitar costos innecesarios.
 
 La segmentación de compute es simple: Data Engineer técnico/ADF usa el cluster ETL; Analyst usa SQL Warehouse; Admin puede gestionar ambos. No se crea un cluster por persona.
 

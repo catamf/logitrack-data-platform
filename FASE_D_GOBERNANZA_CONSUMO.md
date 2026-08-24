@@ -872,11 +872,11 @@ Durante las pruebas:
 - los tokens OAuth se mantuvieron únicamente en variables temporales de PowerShell;
 - no se almacenaron tokens en Terraform;
 - no se almacenaron OAuth secrets en Git;
-- los archivos locales destinados a contener secretos están configurados para ser ignorados por Git; la comprobación final del contenido a incluir en el commit se realizará como parte del cierre de la fase;
+- los archivos locales destinados a contener secretos están configurados para ser ignorados por Git y se comprobó el contenido incluido en el commit antes de su creación;
 - no se implementó una segunda credencial de acceso a ADLS;
 - se mantuvo el principio de mínimo privilegio.
 
-El OAuth secret temporal utilizado para las pruebas debe revocarse una vez finalizadas todas las validaciones que requieran autenticación como Analyst.
+El OAuth secret temporal utilizado para las pruebas fue revocado una vez finalizadas las validaciones que requerían autenticación como Analyst. Al cierre de la fase, el service principal `analyst-logitrack-dev` no mantiene secretos OAuth activos.
 
 ---
 
@@ -912,20 +912,21 @@ Las capturas no contienen OAuth secrets, Bearer tokens ni contraseñas.
 
 ---
 
-## 25. Trabajo pendiente antes del commit de la fase
+## 25. Cierre de la fase
 
-La implementación, la validación técnica y la captura de evidencias principales de la Fase D están completadas.
+La implementación, la validación técnica y la captura de evidencias de la Fase D quedaron completadas.
 
-Antes de realizar el commit de cierre quedan únicamente tareas de entrega:
+Como parte del cierre se realizaron las siguientes comprobaciones:
 
-1. incorporar/revisar las evidencias D.1–D.14 en el documento Word general del proyecto;
-2. revocar el OAuth secret temporal utilizado para las pruebas cuando ya no sea necesario;
-3. revisar el `git diff` completo de la Fase D;
-4. ejecutar las validaciones finales del repositorio;
-5. comprobar que no existan secretos ni archivos generados incluidos accidentalmente;
-6. realizar el commit de cierre de Fase D.
+1. se incorporaron y revisaron las evidencias D.1–D.14;
+2. se revisó el `git diff` de la fase;
+3. se ejecutaron satisfactoriamente las validaciones del repositorio mediante `pre-commit`;
+4. se comprobó que no se incluyeran secretos ni archivos Terraform sensibles en el commit;
+5. se corrigió el validador para excluir directorios generados como `.terraform`, manteniendo la detección de `.tfstate` y `.tfplan` fuera de ellos;
+6. se realizó el commit de cierre de Fase D: `ab98d26 feat: completar fase D de gobernanza y consumo analitico`;
+7. posteriormente se revocó el OAuth secret temporal utilizado para las pruebas del service principal Analyst.
 
-La Fase E se tratará de forma independiente y no se considera ejecutada dentro de este documento.
+La Fase E se tratará de forma independiente y se limitará al cierre y preparación de la entrega.
 
 ---
 

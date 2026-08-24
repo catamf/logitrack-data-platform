@@ -1,0 +1,1512 @@
+﻿{
+  "activities": [
+    {
+      "activities": [
+        {
+          "additionalProperties": null,
+          "dataset": {
+            "parameters": null,
+            "referenceName": "ds_postgresql_query_v2",
+            "type": "DatasetReference"
+          },
+          "dependsOn": [],
+          "description": null,
+          "firstRowOnly": true,
+          "linkedServiceName": null,
+          "name": "Lookup_watermark_inicio",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "source": {
+            "additionalColumns": null,
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "maxConcurrentConnections": null,
+            "query": {
+              "type": "Expression",
+              "value": "@concat('SELECT watermark_utc FROM control_ingesta WHERE tabla = ''', item(), '''')"
+            },
+            "queryTimeout": "00:10:00",
+            "sourceRetryCount": null,
+            "sourceRetryWait": null,
+            "type": "AzurePostgreSqlSource"
+          },
+          "state": null,
+          "type": "Lookup",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dataset": {
+            "parameters": null,
+            "referenceName": "ds_postgresql_query_v2",
+            "type": "DatasetReference"
+          },
+          "dependsOn": [
+            {
+              "activity": "Lookup_watermark_inicio",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "firstRowOnly": true,
+          "linkedServiceName": null,
+          "name": "Lookup_watermark_fin",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "source": {
+            "additionalColumns": null,
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "maxConcurrentConnections": null,
+            "query": "SELECT CURRENT_TIMESTAMP AS watermark_fin",
+            "queryTimeout": "00:10:00",
+            "sourceRetryCount": null,
+            "sourceRetryWait": null,
+            "type": "AzurePostgreSqlSource"
+          },
+          "state": null,
+          "type": "Lookup",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dataIntegrationUnits": null,
+          "dependsOn": [
+            {
+              "activity": "Lookup_watermark_fin",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "enableSkipIncompatibleRow": null,
+          "enableStaging": false,
+          "inputs": [
+            {
+              "parameters": null,
+              "referenceName": "ds_postgresql_query_v2",
+              "type": "DatasetReference"
+            }
+          ],
+          "linkedServiceName": null,
+          "logSettings": null,
+          "logStorageSettings": null,
+          "name": "Copy_Bronze_intento_1",
+          "onInactiveMarkAs": null,
+          "outputs": [
+            {
+              "parameters": {
+                "tabla": {
+                  "type": "Expression",
+                  "value": "@item()"
+                }
+              },
+              "referenceName": "ds_bronze_parquet",
+              "type": "DatasetReference"
+            }
+          ],
+          "parallelCopies": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 0,
+            "retryIntervalInSeconds": 1,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "02:00:00"
+          },
+          "preserve": null,
+          "preserveRules": null,
+          "redirectIncompatibleRowSettings": null,
+          "sink": {
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "formatSettings": {
+              "additionalProperties": null,
+              "fileNamePrefix": null,
+              "maxRowsPerFile": null,
+              "type": "ParquetWriteSettings"
+            },
+            "maxConcurrentConnections": null,
+            "sinkRetryCount": null,
+            "sinkRetryWait": null,
+            "storeSettings": {
+              "additionalProperties": null,
+              "blockSizeInMb": null,
+              "copyBehavior": null,
+              "disableMetricsCollection": null,
+              "maxConcurrentConnections": null,
+              "metadata": null,
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "ParquetSink",
+            "writeBatchSize": null,
+            "writeBatchTimeout": null
+          },
+          "skipErrorFile": null,
+          "source": {
+            "additionalColumns": null,
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "maxConcurrentConnections": null,
+            "query": {
+              "type": "Expression",
+              "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))"
+            },
+            "queryTimeout": "01:30:00",
+            "sourceRetryCount": null,
+            "sourceRetryWait": null,
+            "type": "AzurePostgreSqlSource"
+          },
+          "stagingSettings": null,
+          "state": null,
+          "translator": null,
+          "type": "Copy",
+          "userProperties": null,
+          "validateDataConsistency": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Copy_Bronze_intento_1",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Failed"
+              ]
+            }
+          ],
+          "description": null,
+          "name": "Espera_backoff_30s",
+          "onInactiveMarkAs": null,
+          "state": null,
+          "type": "Wait",
+          "userProperties": null,
+          "waitTimeInSeconds": 30
+        },
+        {
+          "additionalProperties": null,
+          "dataIntegrationUnits": null,
+          "dependsOn": [
+            {
+              "activity": "Espera_backoff_30s",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "enableSkipIncompatibleRow": null,
+          "enableStaging": false,
+          "inputs": [
+            {
+              "parameters": null,
+              "referenceName": "ds_postgresql_query_v2",
+              "type": "DatasetReference"
+            }
+          ],
+          "linkedServiceName": null,
+          "logSettings": null,
+          "logStorageSettings": null,
+          "name": "Copy_Bronze_intento_2",
+          "onInactiveMarkAs": null,
+          "outputs": [
+            {
+              "parameters": {
+                "tabla": {
+                  "type": "Expression",
+                  "value": "@item()"
+                }
+              },
+              "referenceName": "ds_bronze_parquet",
+              "type": "DatasetReference"
+            }
+          ],
+          "parallelCopies": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 0,
+            "retryIntervalInSeconds": 1,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "02:00:00"
+          },
+          "preserve": null,
+          "preserveRules": null,
+          "redirectIncompatibleRowSettings": null,
+          "sink": {
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "formatSettings": {
+              "additionalProperties": null,
+              "fileNamePrefix": null,
+              "maxRowsPerFile": null,
+              "type": "ParquetWriteSettings"
+            },
+            "maxConcurrentConnections": null,
+            "sinkRetryCount": null,
+            "sinkRetryWait": null,
+            "storeSettings": {
+              "additionalProperties": null,
+              "blockSizeInMb": null,
+              "copyBehavior": null,
+              "disableMetricsCollection": null,
+              "maxConcurrentConnections": null,
+              "metadata": null,
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "ParquetSink",
+            "writeBatchSize": null,
+            "writeBatchTimeout": null
+          },
+          "skipErrorFile": null,
+          "source": {
+            "additionalColumns": null,
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "maxConcurrentConnections": null,
+            "query": {
+              "type": "Expression",
+              "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))"
+            },
+            "queryTimeout": "01:30:00",
+            "sourceRetryCount": null,
+            "sourceRetryWait": null,
+            "type": "AzurePostgreSqlSource"
+          },
+          "stagingSettings": null,
+          "state": null,
+          "translator": null,
+          "type": "Copy",
+          "userProperties": null,
+          "validateDataConsistency": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Copy_Bronze_intento_2",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Failed"
+              ]
+            }
+          ],
+          "description": null,
+          "name": "Espera_backoff_60s",
+          "onInactiveMarkAs": null,
+          "state": null,
+          "type": "Wait",
+          "userProperties": null,
+          "waitTimeInSeconds": 60
+        },
+        {
+          "additionalProperties": null,
+          "dataIntegrationUnits": null,
+          "dependsOn": [
+            {
+              "activity": "Espera_backoff_60s",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "enableSkipIncompatibleRow": null,
+          "enableStaging": false,
+          "inputs": [
+            {
+              "parameters": null,
+              "referenceName": "ds_postgresql_query_v2",
+              "type": "DatasetReference"
+            }
+          ],
+          "linkedServiceName": null,
+          "logSettings": null,
+          "logStorageSettings": null,
+          "name": "Copy_Bronze_intento_3",
+          "onInactiveMarkAs": null,
+          "outputs": [
+            {
+              "parameters": {
+                "tabla": {
+                  "type": "Expression",
+                  "value": "@item()"
+                }
+              },
+              "referenceName": "ds_bronze_parquet",
+              "type": "DatasetReference"
+            }
+          ],
+          "parallelCopies": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 0,
+            "retryIntervalInSeconds": 1,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "02:00:00"
+          },
+          "preserve": null,
+          "preserveRules": null,
+          "redirectIncompatibleRowSettings": null,
+          "sink": {
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "formatSettings": {
+              "additionalProperties": null,
+              "fileNamePrefix": null,
+              "maxRowsPerFile": null,
+              "type": "ParquetWriteSettings"
+            },
+            "maxConcurrentConnections": null,
+            "sinkRetryCount": null,
+            "sinkRetryWait": null,
+            "storeSettings": {
+              "additionalProperties": null,
+              "blockSizeInMb": null,
+              "copyBehavior": null,
+              "disableMetricsCollection": null,
+              "maxConcurrentConnections": null,
+              "metadata": null,
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "type": "ParquetSink",
+            "writeBatchSize": null,
+            "writeBatchTimeout": null
+          },
+          "skipErrorFile": null,
+          "source": {
+            "additionalColumns": null,
+            "additionalProperties": null,
+            "disableMetricsCollection": null,
+            "maxConcurrentConnections": null,
+            "query": {
+              "type": "Expression",
+              "value": "@if(equals(pipeline().parameters.carga_completa,'true'), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item()), concat('SELECT *, CURRENT_TIMESTAMP AS _ingesta_ts, ''postgresql'' AS _sistema_fuente, ''', pipeline().RunId, ''' AS _batch_id FROM ', item(), ' WHERE ts_actualizacion > ''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''' AND ts_actualizacion <= ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''''))"
+            },
+            "queryTimeout": "01:30:00",
+            "sourceRetryCount": null,
+            "sourceRetryWait": null,
+            "type": "AzurePostgreSqlSource"
+          },
+          "stagingSettings": null,
+          "state": null,
+          "translator": null,
+          "type": "Copy",
+          "userProperties": null,
+          "validateDataConsistency": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Copy_Bronze_intento_1",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Registrar_log_ingesta_1",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('INSERT INTO log_ingesta_adf (batch_id, tabla, watermark_inicio, watermark_fin, registros_procesados, bytes_escritos, duracion_segundos, estado) VALUES (''', pipeline().RunId, ''',''', item(), ''',''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''',''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''',', string(activity('Copy_Bronze_intento_1').output.rowsCopied), ',', string(activity('Copy_Bronze_intento_1').output.dataWritten), ',', string(activity('Copy_Bronze_intento_1').output.copyDuration), ',''SUCCESS'')')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Registrar_log_ingesta_1",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Actualizar_watermark_1",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('UPDATE control_ingesta SET watermark_utc = ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''', ultima_ejecucion_id = ''', pipeline().RunId, ''', actualizado_en = CURRENT_TIMESTAMP WHERE tabla = ''', item(), '''')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Copy_Bronze_intento_2",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Registrar_log_ingesta_2",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('INSERT INTO log_ingesta_adf (batch_id, tabla, watermark_inicio, watermark_fin, registros_procesados, bytes_escritos, duracion_segundos, estado) VALUES (''', pipeline().RunId, ''',''', item(), ''',''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''',''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''',', string(activity('Copy_Bronze_intento_2').output.rowsCopied), ',', string(activity('Copy_Bronze_intento_2').output.dataWritten), ',', string(activity('Copy_Bronze_intento_2').output.copyDuration), ',''SUCCESS'')')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Registrar_log_ingesta_2",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Actualizar_watermark_2",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('UPDATE control_ingesta SET watermark_utc = ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''', ultima_ejecucion_id = ''', pipeline().RunId, ''', actualizado_en = CURRENT_TIMESTAMP WHERE tabla = ''', item(), '''')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Copy_Bronze_intento_3",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Registrar_log_ingesta_3",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('INSERT INTO log_ingesta_adf (batch_id, tabla, watermark_inicio, watermark_fin, registros_procesados, bytes_escritos, duracion_segundos, estado) VALUES (''', pipeline().RunId, ''',''', item(), ''',''', activity('Lookup_watermark_inicio').output.firstRow.watermark_utc, ''',''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''',', string(activity('Copy_Bronze_intento_3').output.rowsCopied), ',', string(activity('Copy_Bronze_intento_3').output.dataWritten), ',', string(activity('Copy_Bronze_intento_3').output.copyDuration), ',''SUCCESS'')')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        },
+        {
+          "additionalProperties": null,
+          "dependsOn": [
+            {
+              "activity": "Registrar_log_ingesta_3",
+              "additionalProperties": null,
+              "dependencyConditions": [
+                "Succeeded"
+              ]
+            }
+          ],
+          "description": null,
+          "linkedServiceName": {
+            "parameters": null,
+            "referenceName": "ls_postgresql_v2",
+            "type": "LinkedServiceReference"
+          },
+          "logSettings": null,
+          "name": "Actualizar_watermark_3",
+          "onInactiveMarkAs": null,
+          "policy": {
+            "additionalProperties": null,
+            "retry": 3,
+            "retryIntervalInSeconds": 30,
+            "secureInput": false,
+            "secureOutput": false,
+            "timeout": "00:10:00"
+          },
+          "returnMultistatementResult": null,
+          "scriptBlockExecutionTimeout": "00:10:00",
+          "scripts": [
+            {
+              "parameters": null,
+              "text": {
+                "type": "Expression",
+                "value": "@concat('UPDATE control_ingesta SET watermark_utc = ''', activity('Lookup_watermark_fin').output.firstRow.watermark_fin, ''', ultima_ejecucion_id = ''', pipeline().RunId, ''', actualizado_en = CURRENT_TIMESTAMP WHERE tabla = ''', item(), '''')"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "state": null,
+          "type": "Script",
+          "userProperties": null
+        }
+      ],
+      "additionalProperties": null,
+      "batchCount": 4,
+      "dependsOn": [],
+      "description": null,
+      "isSequential": false,
+      "items": {
+        "type": "Expression",
+        "value": "@createArray('ope_conductores','cli_remitentes','geo_zonas','tms_envios','gps_rutas','cal_destinatarios','dir_novedades')"
+      },
+      "name": "ForEach_tablas_fuente",
+      "onInactiveMarkAs": null,
+      "state": null,
+      "type": "ForEach",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "dataIntegrationUnits": null,
+      "dependsOn": [
+        {
+          "activity": "ForEach_tablas_fuente",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "enableSkipIncompatibleRow": null,
+      "enableStaging": false,
+      "inputs": [
+        {
+          "parameters": null,
+          "referenceName": "ds_postgresql_query_v2",
+          "type": "DatasetReference"
+        }
+      ],
+      "linkedServiceName": null,
+      "logSettings": null,
+      "logStorageSettings": null,
+      "name": "Copy_log_ingesta_batch",
+      "onInactiveMarkAs": null,
+      "outputs": [
+        {
+          "parameters": {
+            "tabla": "_control/log_ingesta"
+          },
+          "referenceName": "ds_bronze_parquet",
+          "type": "DatasetReference"
+        }
+      ],
+      "parallelCopies": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "00:20:00"
+      },
+      "preserve": null,
+      "preserveRules": null,
+      "redirectIncompatibleRowSettings": null,
+      "sink": {
+        "additionalProperties": null,
+        "disableMetricsCollection": null,
+        "formatSettings": {
+          "additionalProperties": null,
+          "fileNamePrefix": null,
+          "maxRowsPerFile": null,
+          "type": "ParquetWriteSettings"
+        },
+        "maxConcurrentConnections": null,
+        "sinkRetryCount": null,
+        "sinkRetryWait": null,
+        "storeSettings": {
+          "additionalProperties": null,
+          "blockSizeInMb": null,
+          "copyBehavior": null,
+          "disableMetricsCollection": null,
+          "maxConcurrentConnections": null,
+          "metadata": null,
+          "type": "AzureBlobFSWriteSettings"
+        },
+        "type": "ParquetSink",
+        "writeBatchSize": null,
+        "writeBatchTimeout": null
+      },
+      "skipErrorFile": null,
+      "source": {
+        "additionalColumns": null,
+        "additionalProperties": null,
+        "disableMetricsCollection": null,
+        "maxConcurrentConnections": null,
+        "query": {
+          "type": "Expression",
+          "value": "@concat('SELECT * FROM log_ingesta_adf WHERE batch_id = ''', pipeline().RunId, '''')"
+        },
+        "queryTimeout": "00:10:00",
+        "sourceRetryCount": null,
+        "sourceRetryWait": null,
+        "type": "AzurePostgreSqlSource"
+      },
+      "stagingSettings": null,
+      "state": null,
+      "translator": null,
+      "type": "Copy",
+      "userProperties": null,
+      "validateDataConsistency": null
+    },
+    {
+      "additionalProperties": null,
+      "baseParameters": {
+        "batch_id": {
+          "type": "Expression",
+          "value": "@pipeline().RunId"
+        },
+        "catalog_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.catalog_name"
+        },
+        "environment": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.environment"
+        },
+        "force_volume_alert": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.force_volume_alert"
+        },
+        "storage_account_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.storage_account_name"
+        },
+        "use_unity_catalog": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.use_unity_catalog"
+        }
+      },
+      "dependsOn": [
+        {
+          "activity": "Copy_log_ingesta_batch",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "libraries": null,
+      "linkedServiceName": {
+        "parameters": null,
+        "referenceName": "ls_databricks",
+        "type": "LinkedServiceReference"
+      },
+      "name": "Auditar_Bronze",
+      "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/00_auditar_bronze",
+      "onInactiveMarkAs": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "02:00:00"
+      },
+      "state": null,
+      "type": "DatabricksNotebook",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Auditar_Bronze",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "expression": {
+        "type": "Expression",
+        "value": "@contains(activity('Auditar_Bronze').output.runOutput, 'VOLUME_ALERT')"
+      },
+      "ifFalseActivities": [],
+      "ifTrueActivities": [
+        {
+          "additionalProperties": null,
+          "dependsOn": [],
+          "description": null,
+          "name": "Notificar_y_Detener_Anomalia",
+          "onInactiveMarkAs": null,
+          "parameters": {
+            "fail_after": "true",
+            "failure_code": "LOGITRACK_VOLUME_ALERT",
+            "key_vault_uri": {
+              "type": "Expression",
+              "value": "@pipeline().parameters.key_vault_uri"
+            },
+            "message": {
+              "type": "Expression",
+              "value": "@concat('LOGITRACK - ANOMALIA DE VOLUMEN | pipeline=', pipeline().Pipeline, ' | fecha=', utcNow(), ' | ', activity('Auditar_Bronze').output.runOutput)"
+            },
+            "notifications_enabled": {
+              "type": "Expression",
+              "value": "@pipeline().parameters.notifications_enabled"
+            }
+          },
+          "pipeline": {
+            "name": null,
+            "referenceName": "pl_logitrack_notificar",
+            "type": "PipelineReference"
+          },
+          "policy": null,
+          "state": null,
+          "type": "ExecutePipeline",
+          "userProperties": null,
+          "waitOnCompletion": true
+        }
+      ],
+      "name": "If_Anomalia_Volumen",
+      "onInactiveMarkAs": null,
+      "state": null,
+      "type": "IfCondition",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "baseParameters": {
+        "batch_id": {
+          "type": "Expression",
+          "value": "@pipeline().RunId"
+        },
+        "catalog_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.catalog_name"
+        },
+        "environment": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.environment"
+        },
+        "storage_account_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.storage_account_name"
+        },
+        "use_unity_catalog": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.use_unity_catalog"
+        }
+      },
+      "dependsOn": [
+        {
+          "activity": "If_Anomalia_Volumen",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "libraries": null,
+      "linkedServiceName": {
+        "parameters": null,
+        "referenceName": "ls_databricks",
+        "type": "LinkedServiceReference"
+      },
+      "name": "Procesar_Silver",
+      "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/01_procesar_silver",
+      "onInactiveMarkAs": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "02:00:00"
+      },
+      "state": null,
+      "type": "DatabricksNotebook",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "baseParameters": {
+        "batch_id": {
+          "type": "Expression",
+          "value": "@pipeline().RunId"
+        },
+        "catalog_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.catalog_name"
+        },
+        "environment": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.environment"
+        },
+        "storage_account_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.storage_account_name"
+        },
+        "use_unity_catalog": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.use_unity_catalog"
+        }
+      },
+      "dependsOn": [
+        {
+          "activity": "Procesar_Silver",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "libraries": null,
+      "linkedServiceName": {
+        "parameters": null,
+        "referenceName": "ls_databricks",
+        "type": "LinkedServiceReference"
+      },
+      "name": "Procesar_Gold",
+      "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/02_procesar_gold",
+      "onInactiveMarkAs": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "02:00:00"
+      },
+      "state": null,
+      "type": "DatabricksNotebook",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "baseParameters": {
+        "batch_id": {
+          "type": "Expression",
+          "value": "@pipeline().RunId"
+        },
+        "catalog_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.catalog_name"
+        },
+        "environment": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.environment"
+        },
+        "storage_account_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.storage_account_name"
+        },
+        "use_unity_catalog": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.use_unity_catalog"
+        }
+      },
+      "dependsOn": [
+        {
+          "activity": "Procesar_Gold",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "libraries": null,
+      "linkedServiceName": {
+        "parameters": null,
+        "referenceName": "ls_databricks",
+        "type": "LinkedServiceReference"
+      },
+      "name": "Calidad_Gold",
+      "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/03_calidad_gold",
+      "onInactiveMarkAs": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "02:00:00"
+      },
+      "state": null,
+      "type": "DatabricksNotebook",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "baseParameters": {
+        "batch_id": {
+          "type": "Expression",
+          "value": "@pipeline().RunId"
+        },
+        "catalog_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.catalog_name"
+        },
+        "environment": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.environment"
+        },
+        "pipeline_start_utc": {
+          "type": "Expression",
+          "value": "@pipeline().TriggerTime"
+        },
+        "storage_account_name": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.storage_account_name"
+        },
+        "use_unity_catalog": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.use_unity_catalog"
+        }
+      },
+      "dependsOn": [
+        {
+          "activity": "Calidad_Gold",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "libraries": null,
+      "linkedServiceName": {
+        "parameters": null,
+        "referenceName": "ls_databricks",
+        "type": "LinkedServiceReference"
+      },
+      "name": "Resumen_Ejecucion",
+      "notebookPath": "/Engineering/logitrack/@{pipeline().parameters.environment}/04_resumen_ejecucion",
+      "onInactiveMarkAs": null,
+      "policy": {
+        "additionalProperties": null,
+        "retry": 3,
+        "retryIntervalInSeconds": 30,
+        "secureInput": false,
+        "secureOutput": false,
+        "timeout": "00:30:00"
+      },
+      "state": null,
+      "type": "DatabricksNotebook",
+      "userProperties": null
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Resumen_Ejecucion",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Succeeded"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Notificar_Resumen_Diario",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "false",
+        "failure_code": "LOGITRACK_NOTIFICATION",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - ', activity('Resumen_Ejecucion').output.runOutput)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "ForEach_tablas_fuente",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Ingesta_Bronze",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Ingesta_Bronze | fecha=', utcNow(), ' | error=', activity('ForEach_tablas_fuente').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Copy_log_ingesta_batch",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Copiar_Log_Ingesta",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Copiar_Log_Ingesta | fecha=', utcNow(), ' | error=', activity('Copy_log_ingesta_batch').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Auditar_Bronze",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Auditar_Bronze",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Auditar_Bronze | fecha=', utcNow(), ' | error=', activity('Auditar_Bronze').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Procesar_Silver",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Procesar_Silver",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Procesar_Silver | fecha=', utcNow(), ' | error=', activity('Procesar_Silver').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Procesar_Gold",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Procesar_Gold",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Procesar_Gold | fecha=', utcNow(), ' | error=', activity('Procesar_Gold').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Calidad_Gold",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Calidad_Gold",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Calidad_Gold | fecha=', utcNow(), ' | error=', activity('Calidad_Gold').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    },
+    {
+      "additionalProperties": null,
+      "dependsOn": [
+        {
+          "activity": "Resumen_Ejecucion",
+          "additionalProperties": null,
+          "dependencyConditions": [
+            "Failed"
+          ]
+        }
+      ],
+      "description": null,
+      "name": "Fallo_Resumen_Ejecucion",
+      "onInactiveMarkAs": null,
+      "parameters": {
+        "fail_after": "true",
+        "failure_code": "LOGITRACK_TASK_FAILED",
+        "key_vault_uri": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.key_vault_uri"
+        },
+        "message": {
+          "type": "Expression",
+          "value": "@concat('LOGITRACK - FALLO | pipeline=', pipeline().Pipeline, ' | tarea=Resumen_Ejecucion | fecha=', utcNow(), ' | error=', activity('Resumen_Ejecucion').error.message)"
+        },
+        "notifications_enabled": {
+          "type": "Expression",
+          "value": "@pipeline().parameters.notifications_enabled"
+        }
+      },
+      "pipeline": {
+        "name": null,
+        "referenceName": "pl_logitrack_notificar",
+        "type": "PipelineReference"
+      },
+      "policy": null,
+      "state": null,
+      "type": "ExecutePipeline",
+      "userProperties": null,
+      "waitOnCompletion": true
+    }
+  ],
+  "additionalProperties": null,
+  "annotations": [],
+  "concurrency": null,
+  "description": "Ingesta incremental y orquestacion Bronze-Silver-Gold",
+  "etag": "bf00dd73-0000-0100-0000-6a8b549c0000",
+  "folder": null,
+  "id": "/subscriptions/4d2a4a9e-75bb-40eb-841d-82b864391ab6/resourceGroups/rg-logitrack-dev/providers/Microsoft.DataFactory/factories/adf-logitrack-dev-mn79c/pipelines/pl_logitrack_end_to_end",
+  "name": "pl_logitrack_end_to_end",
+  "parameters": {
+    "carga_completa": {
+      "defaultValue": "false",
+      "type": "String"
+    },
+    "catalog_name": {
+      "defaultValue": "logitrack_dev",
+      "type": "String"
+    },
+    "environment": {
+      "defaultValue": "dev",
+      "type": "String"
+    },
+    "force_volume_alert": {
+      "defaultValue": "false",
+      "type": "String"
+    },
+    "key_vault_uri": {
+      "defaultValue": "https://kv-dev-mn79c.vault.azure.net/",
+      "type": "String"
+    },
+    "notifications_enabled": {
+      "defaultValue": "false",
+      "type": "String"
+    },
+    "storage_account_name": {
+      "defaultValue": "stlogidevmn79c",
+      "type": "String"
+    },
+    "use_unity_catalog": {
+      "defaultValue": "true",
+      "type": "String"
+    }
+  },
+  "policy": null,
+  "resourceGroup": "rg-logitrack-dev",
+  "runDimensions": null,
+  "type": "Microsoft.DataFactory/factories/pipelines",
+  "variables": {}
+}

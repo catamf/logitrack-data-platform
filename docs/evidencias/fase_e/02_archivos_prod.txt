@@ -1,0 +1,18 @@
+
+Name                         Length LastWriteTime
+----                         ------ -------------
+CAL_DESTINATARIOS.csv      19034169 23/08/2026 6:25:05 p. m.
+CAL_DESTINATARIOS.parquet   4443686 23/08/2026 6:25:05 p. m.
+CLI_REMITENTES.csv            14163 23/08/2026 6:24:22 p. m.
+CLI_REMITENTES.parquet         8952 23/08/2026 6:24:22 p. m.
+DIR_NOVEDADES.csv          14728726 23/08/2026 6:25:06 p. m.
+DIR_NOVEDADES.parquet       2533820 23/08/2026 6:25:06 p. m.
+GEO_ZONAS.csv                 23714 23/08/2026 6:24:22 p. m.
+GEO_ZONAS.parquet             17921 23/08/2026 6:24:22 p. m.
+GPS_RUTAS.csv               7275341 23/08/2026 6:25:04 p. m.
+GPS_RUTAS.parquet           1670588 23/08/2026 6:25:04 p. m.
+manifest.json                   595 23/08/2026 6:25:06 p. m.
+OPE_CONDUCTORES.csv           65315 23/08/2026 6:24:22 p. m.
+OPE_CONDUCTORES.parquet       50762 23/08/2026 6:24:22 p. m.
+TMS_ENVIOS.csv            305076858 23/08/2026 6:25:02 p. m.
+TMS_ENVIOS.parquet         51187019 23/08/2026 6:25:02 p. m.

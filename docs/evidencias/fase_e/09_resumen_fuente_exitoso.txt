@@ -1,0 +1,1 @@
+﻿LOGITRACK - RESUMEN_DIARIO | batch_id=d636a27f-9f2f-11f1-8ad2-f4c52f12ecd6 | silver=17250 | gold=54519 | rechazados=15 | alertas_calidad=0 | duracion_segundos=848.621
